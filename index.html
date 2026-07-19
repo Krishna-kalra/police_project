@@ -1,11 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GeoSphere - Ghaziabad Police GIS Portal</title>
-
+    
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Leaflet CSS & JS -->
@@ -14,13 +13,10 @@
     <!-- Database File -->
     <script src="locations_db.js"></script>
     <!-- Inter Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
-        rel="stylesheet">
-
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-        }
+        body { font-family: 'Inter', sans-serif; }
 
         .custom-emoji-marker {
             background: none !important;
@@ -32,13 +28,10 @@
         }
 
         @keyframes bounceEmoji {
-
-            0%,
-            100% {
+            0%, 100% {
                 transform: translateY(0) scale(1);
                 animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
             }
-
             50% {
                 transform: translateY(-8px) scale(1.08);
                 animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
@@ -52,7 +45,7 @@
             font-size: 26px;
             line-height: 1;
             animation: bounceEmoji 1.8s infinite;
-            filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.6));
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.6));
             transition: transform 0.2s ease, filter 0.2s ease;
             cursor: pointer;
         }
@@ -63,65 +56,34 @@
             filter: drop-shadow(0 8px 12px rgba(56, 189, 248, 0.8));
         }
 
-        ::-webkit-scrollbar {
-            width: 5px;
-            height: 5px;
-        }
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
 
-        ::-webkit-scrollbar-track {
-            background: #0f172a;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: #334155;
-            border-radius: 4px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: #475569;
-        }
-
-        .leaflet-bar {
-            border: none !important;
-            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.3) !important;
-        }
-
-        .leaflet-bar a {
-            background-color: #1e293b !important;
-            color: #f8fafc !important;
-            border-bottom: 1px solid #334155 !important;
-        }
-
-        .leaflet-bar a:hover {
-            background-color: #334155 !important;
-            color: #38bdf8 !important;
-        }
+        .leaflet-bar { border: none !important; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.3) !important; }
+        .leaflet-bar a { background-color: #1e293b !important; color: #f8fafc !important; border-bottom: 1px solid #334155 !important; }
+        .leaflet-bar a:hover { background-color: #334155 !important; color: #38bdf8 !important; }
     </style>
 </head>
-
 <body class="bg-slate-950 text-slate-100 h-screen w-screen flex flex-col md:flex-row overflow-hidden select-none">
 
     <!-- Left Sidebar: Category Operations & Controls -->
-    <aside
-        class="w-full md:w-[440px] bg-slate-900 border-b md:border-b-0 md:border-r border-slate-800 flex flex-col h-[55vh] md:h-full z-[1000] shrink-0">
-
+    <aside class="w-full md:w-[440px] bg-slate-900 border-b md:border-b-0 md:border-r border-slate-800 flex flex-col h-[55vh] md:h-full z-[1000] shrink-0">
+        
         <!-- Header -->
         <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/90 backdrop-blur">
             <div class="flex items-center gap-3">
                 <div class="bg-sky-500/10 p-2.5 rounded-xl text-sky-400 border border-sky-500/20">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
-                        stroke="currentColor" class="w-6 h-6">
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                            d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                            d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
                     </svg>
                 </div>
                 <div>
                     <h1 class="text-base font-bold tracking-tight text-white flex items-center gap-2">
                         GeoSphere GIS
-                        <span
-                            class="text-[10px] font-bold bg-sky-500/20 text-sky-400 px-2 py-0.5 rounded-full border border-sky-500/30">Live</span>
+                        <span class="text-[10px] font-bold bg-sky-500/20 text-sky-400 px-2 py-0.5 rounded-full border border-sky-500/30">Live</span>
                     </h1>
                     <p class="text-[11px] text-slate-400">Ghaziabad Police Location Viewer</p>
                 </div>
@@ -132,22 +94,16 @@
 
         <!-- Scrollable Category & Action Controls -->
         <div class="flex-1 overflow-y-auto p-4 space-y-5">
-
+            
             <!-- Global Action Bar -->
-            <div
-                class="flex items-center justify-between gap-2 bg-slate-950/60 p-2.5 rounded-2xl border border-slate-800">
-                <button id="btnShowAll" onclick="showcaseAllSetLocations()"
-                    class="flex-1 flex items-center justify-center gap-1.5 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-semibold py-2 px-3 text-xs rounded-xl shadow-lg shadow-sky-500/20 transition-all active:scale-95">
+            <div class="flex items-center justify-between gap-2 bg-slate-950/60 p-2.5 rounded-2xl border border-slate-800">
+                <button id="btnShowAll" onclick="showcaseAllSetLocations()" class="flex-1 flex items-center justify-center gap-1.5 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-semibold py-2 px-3 text-xs rounded-xl shadow-lg shadow-sky-500/20 transition-all active:scale-95">
                     <span>✨</span> Show All Locations
                 </button>
-                <button onclick="clearMapPins()"
-                    class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl border border-slate-700 transition-all active:scale-95"
-                    title="Clear all active markers from map">
+                <button onclick="clearMapPins()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl border border-slate-700 transition-all active:scale-95" title="Clear all active markers from map">
                     🗑️ Clear
                 </button>
-                <button onclick="recenterMapView()"
-                    class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl border border-slate-700 transition-all active:scale-95"
-                    title="Reset map zoom to fit markers">
+                <button onclick="recenterMapView()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl border border-slate-700 transition-all active:scale-95" title="Reset map zoom to fit markers">
                     🎯 Fit Map
                 </button>
             </div>
@@ -157,11 +113,9 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <h2 class="text-xs font-bold uppercase tracking-wider text-slate-200">Category Locations</h2>
-                        <p class="text-[10px] text-slate-400">Click any category button to show all its points on the
-                            map.</p>
+                        <p class="text-[10px] text-slate-400">Click any category button to show all its points on the map.</p>
                     </div>
-                    <span id="totalCategoriesBadge"
-                        class="text-[10px] bg-slate-800 text-sky-400 font-bold px-2 py-0.5 rounded-full border border-slate-700">
+                    <span id="totalCategoriesBadge" class="text-[10px] bg-slate-800 text-sky-400 font-bold px-2 py-0.5 rounded-full border border-slate-700">
                         0 Categories
                     </span>
                 </div>
@@ -178,37 +132,30 @@
                     <h3 class="text-xs font-bold uppercase tracking-wider text-sky-400 flex items-center gap-1.5">
                         <span>🛣️</span> Police Patrol Corridors
                     </h3>
-                    <span id="routeDistanceBadge"
-                        class="text-[10px] bg-sky-500/20 text-sky-300 font-mono font-bold px-2 py-0.5 rounded-lg border border-sky-500/30">
+                    <span id="routeDistanceBadge" class="text-[10px] bg-sky-500/20 text-sky-300 font-mono font-bold px-2 py-0.5 rounded-lg border border-sky-500/30">
                         0.0 km
                     </span>
                 </div>
 
                 <div>
-                    <label class="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Select
-                        Route Corridor</label>
-                    <select id="routeSelect" onchange="onRouteSelectionChange()"
-                        class="w-full bg-slate-800 border border-slate-700 focus:border-sky-500 rounded-xl p-2.5 text-xs text-slate-100 outline-none transition-all">
-                        <option value="route_1">Route 1: Modinagar (Kadrabad) ➔ Sahibabad (Seema Border) - 39 km
-                        </option>
+                    <label class="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Select Route Corridor</label>
+                    <select id="routeSelect" onchange="onRouteSelectionChange()" class="w-full bg-slate-800 border border-slate-700 focus:border-sky-500 rounded-xl p-2.5 text-xs text-slate-100 outline-none transition-all">
+                        <option value="route_1">Route 1: Modinagar (Kadrabad) ➔ Sahibabad (Seema Border) - 39 km</option>
                         <option value="route_2">Route 2: Niwadi (Nahar Wali Peer) ➔ Loni Border PS - 43.4 km</option>
                         <option value="route_3">Route 3: DME Kashi Toll ➔ UP Gate Kaushambi PS - 50.3 km</option>
                     </select>
                 </div>
 
                 <div class="grid grid-cols-2 gap-2">
-                    <button id="toggleRouteBtn" onclick="toggleRouteLine()"
-                        class="flex items-center justify-center gap-1.5 bg-sky-500 hover:bg-sky-400 text-white font-semibold py-2.5 px-3 text-xs rounded-xl shadow transition-all active:scale-95">
+                    <button id="toggleRouteBtn" onclick="toggleRouteLine()" class="flex items-center justify-center gap-1.5 bg-sky-500 hover:bg-sky-400 text-white font-semibold py-2.5 px-3 text-xs rounded-xl shadow transition-all active:scale-95">
                         <span>🛤️</span> Draw Route
                     </button>
-                    <button id="patrolAnimBtn" onclick="togglePatrolSimulation()"
-                        class="flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 px-3 text-xs rounded-xl shadow transition-all active:scale-95">
+                    <button id="patrolAnimBtn" onclick="togglePatrolSimulation()" class="flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 px-3 text-xs rounded-xl shadow transition-all active:scale-95">
                         <span>🚔</span> Start Patrol
                     </button>
                 </div>
 
-                <div id="routeStatusText"
-                    class="text-[11px] text-slate-400 bg-slate-950/70 px-3 py-2 rounded-xl border border-slate-800 text-center font-mono">
+                <div id="routeStatusText" class="text-[11px] text-slate-400 bg-slate-950/70 px-3 py-2 rounded-xl border border-slate-800 text-center font-mono">
                     Select a corridor and click "Draw Route"
                 </div>
             </div>
@@ -219,9 +166,7 @@
                     <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
                         <span>📍</span> Route Landmarks & Posts
                     </h3>
-                    <span id="routeStopsCountBadge"
-                        class="text-[10px] bg-slate-800 text-sky-400 font-bold px-2 py-0.5 rounded-full border border-slate-700">0
-                        Landmarks</span>
+                    <span id="routeStopsCountBadge" class="text-[10px] bg-slate-800 text-sky-400 font-bold px-2 py-0.5 rounded-full border border-slate-700">0 Landmarks</span>
                 </div>
                 <div id="routeNearbyLocationsList" class="space-y-2 max-h-[160px] overflow-y-auto pr-1">
                     <div class="py-4 text-center text-slate-500 text-xs italic">
@@ -236,11 +181,9 @@
         <div class="border-t border-slate-800 bg-slate-950 p-3.5 flex flex-col max-h-[180px] shrink-0">
             <div class="flex justify-between items-center mb-2 px-1">
                 <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Active Map Pins</h3>
-                <span id="activeCountBadge"
-                    class="text-[10px] bg-slate-800 text-sky-400 px-2 py-0.5 rounded-full font-bold border border-slate-700">0
-                    Pins</span>
+                <span id="activeCountBadge" class="text-[10px] bg-slate-800 text-sky-400 px-2 py-0.5 rounded-full font-bold border border-slate-700">0 Pins</span>
             </div>
-
+            
             <div id="activePinsVault" class="flex-1 overflow-y-auto space-y-1.5 pr-1">
                 <div id="emptyPinsState" class="py-4 text-center text-slate-500 text-xs italic">
                     Click any category button above or "Show All" to display pins.
@@ -256,26 +199,19 @@
 
         <!-- Floating Address Search Bar -->
         <div class="absolute top-4 left-4 right-4 md:left-6 md:right-auto md:w-[420px] z-[999]">
-            <form onsubmit="searchAddress(event)"
-                class="relative flex items-center bg-slate-900/90 backdrop-blur border border-slate-700/80 p-1.5 rounded-2xl shadow-2xl transition-all focus-within:border-sky-500">
-                <input id="searchInput" type="text" placeholder="Search location, address, or landmark..."
-                    class="flex-1 bg-transparent border-none text-slate-100 text-sm px-4 py-2 outline-none placeholder:text-slate-400">
-                <button type="submit"
-                    class="bg-sky-500 hover:bg-sky-400 text-white p-2.5 rounded-xl transition-all active:scale-95 shadow-md shadow-sky-500/20">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5"
-                        stroke="currentColor" class="w-4 h-4">
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                            d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.637 10.637Z" />
+            <form onsubmit="searchAddress(event)" class="relative flex items-center bg-slate-900/90 backdrop-blur border border-slate-700/80 p-1.5 rounded-2xl shadow-2xl transition-all focus-within:border-sky-500">
+                <input id="searchInput" type="text" placeholder="Search location, address, or landmark..." class="flex-1 bg-transparent border-none text-slate-100 text-sm px-4 py-2 outline-none placeholder:text-slate-400">
+                <button type="submit" class="bg-sky-500 hover:bg-sky-400 text-white p-2.5 rounded-xl transition-all active:scale-95 shadow-md shadow-sky-500/20">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.637 10.637Z" />
                     </svg>
                 </button>
             </form>
         </div>
 
         <!-- Toast Notification Widget -->
-        <div id="toast"
-            class="absolute bottom-6 right-6 z-[1000] max-w-sm pointer-events-none transform translate-y-12 opacity-0 transition-all duration-300">
-            <div
-                class="bg-slate-900/95 backdrop-blur border border-slate-800 p-4 rounded-xl shadow-2xl flex items-center gap-3">
+        <div id="toast" class="absolute bottom-6 right-6 z-[1000] max-w-sm pointer-events-none transform translate-y-12 opacity-0 transition-all duration-300">
+            <div class="bg-slate-900/95 backdrop-blur border border-slate-800 p-4 rounded-xl shadow-2xl flex items-center gap-3">
                 <div id="toastIcon" class="p-1.5 rounded-lg text-sky-400 bg-sky-500/10">ℹ</div>
                 <div>
                     <h4 id="toastTitle" class="text-xs font-bold text-white uppercase tracking-wider">GIS Notice</h4>
@@ -292,7 +228,6 @@
         let activeMarkers = [];
         let configuredLocations = [];
         let activeCategoryFilter = "All";
-        let suppressActivePinsRender = false;
 
         // Route Polyline & Patrol Animation State
         let routeCasingPolyline = null;
@@ -303,14 +238,14 @@
         let patrolAnimationId = null;
         let isPatrolling = false;
 
-        window.onload = function () {
+        window.onload = function() {
             loadConfiguredLocations();
             initMap();
             renderCategoryButtons();
         };
 
         // Storage Synchronization listener
-        window.addEventListener('storage', function (e) {
+        window.addEventListener('storage', function(e) {
             if (e.key === 'geosphere_locations') {
                 loadConfiguredLocations();
                 renderCategoryButtons();
@@ -325,7 +260,7 @@
             if (stored) {
                 try {
                     configuredLocations = JSON.parse(stored);
-                } catch (e) {
+                } catch(e) {
                     configuredLocations = dbLocations;
                     localStorage.setItem('geosphere_locations', JSON.stringify(configuredLocations));
                 }
@@ -345,13 +280,10 @@
 
             markerLayerGroup = L.layerGroup().addTo(map);
 
-            // Keep startup light on small screens; let the user opt into full marker rendering.
-            const isSmallScreen = window.matchMedia('(max-width: 767px)').matches;
-            if (!isSmallScreen) {
-                setTimeout(() => {
-                    showcaseAllSetLocations();
-                }, 400);
-            }
+            // Display all locations on startup
+            setTimeout(() => {
+                showcaseAllSetLocations();
+            }, 400);
         }
 
         // Category Emoji Helper Map
@@ -402,10 +334,11 @@
                 const isActive = activeCategoryFilter === catName;
 
                 const btn = document.createElement('button');
-                btn.className = `flex items-center justify-between p-3 rounded-xl border transition-all text-left group active:scale-[0.98] ${isActive
-                        ? 'bg-sky-500/20 border-sky-400 text-sky-200 shadow-lg shadow-sky-500/10'
-                        : 'bg-slate-800/80 hover:bg-slate-800 border-slate-700/70 hover:border-slate-500 text-slate-200'
-                    }`;
+                btn.className = `flex items-center justify-between p-3 rounded-xl border transition-all text-left group active:scale-[0.98] ${
+                    isActive
+                    ? 'bg-sky-500/20 border-sky-400 text-sky-200 shadow-lg shadow-sky-500/10'
+                    : 'bg-slate-800/80 hover:bg-slate-800 border-slate-700/70 hover:border-slate-500 text-slate-200'
+                }`;
                 btn.onclick = () => filterByCategory(catName);
 
                 btn.innerHTML = `
@@ -413,7 +346,8 @@
                         <span class="text-xl shrink-0 group-hover:scale-110 transition-transform">${emoji}</span>
                         <span class="text-xs font-semibold truncate">${catName}</span>
                     </div>
-                    <span class="text-[10px] font-bold font-mono px-2 py-0.5 rounded-full shrink-0 ${isActive ? 'bg-sky-500 text-white' : 'bg-slate-900 text-slate-400 border border-slate-700'
+                    <span class="text-[10px] font-bold font-mono px-2 py-0.5 rounded-full shrink-0 ${
+                        isActive ? 'bg-sky-500 text-white' : 'bg-slate-900 text-slate-400 border border-slate-700'
                     }">${locs.length}</span>
                 `;
 
@@ -436,12 +370,9 @@
             markerLayerGroup.clearLayers();
             activeMarkers = [];
 
-            suppressActivePinsRender = true;
             filtered.forEach(loc => {
                 dropMarkerAt(loc.lat, loc.lon, loc.emoji || getCategoryEmoji(category), loc.name, loc.category);
             });
-            suppressActivePinsRender = false;
-            updateActivePinsVault();
 
             recenterMapView();
             showToast("Category Showcased", `Displaying all ${activeMarkers.length} locations in category "${category}"`, "success");
@@ -460,14 +391,11 @@
             markerLayerGroup.clearLayers();
             activeMarkers = [];
 
-            suppressActivePinsRender = true;
             configuredLocations.forEach(loc => {
                 if (loc && loc.lat != null && loc.lon != null) {
                     dropMarkerAt(loc.lat, loc.lon, loc.emoji || getCategoryEmoji(loc.category), loc.name, loc.category);
                 }
             });
-            suppressActivePinsRender = false;
-            updateActivePinsVault();
 
             recenterMapView();
             showToast("Showcasing All", `Displaying all ${activeMarkers.length} locations on map`, "success");
@@ -475,9 +403,7 @@
 
         // Core Marker Creation Function
         function dropMarkerAt(rawLat, rawLon, rawEmoji, rawLabel, rawCategory) {
-            if (!suppressActivePinsRender) {
-                updateActivePinsVault();
-            }
+            const lat = parseFloat(rawLat);
             const lon = parseFloat(rawLon);
 
             if (isNaN(lat) || isNaN(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return;
@@ -601,7 +527,7 @@
                 } else {
                     showToast("Not Found", `No geographic coordinates found for "${query}".`, "error");
                 }
-            } catch (err) {
+            } catch(err) {
                 showToast("Search Error", "Could not connect to geocoding server.", "error");
             }
         }
@@ -837,5 +763,4 @@
         }
     </script>
 </body>
-
 </html>
