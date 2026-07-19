@@ -1,0 +1,14 @@
+[
+  { "id": "flag_1", "name": "Flag Point 1", "category": "Flag Post", "lat": 28.672809, "lon": 77.413845, "emoji": "🚩" },
+  { "id": "flag_2", "name": "Flag Point 2", "category": "Flag Post", "lat": 28.455224, "lon": 77.454525, "emoji": "🚩" },
+  { "id": "flag_3", "name": "Flag Point 3", "category": "Flag Post", "lat": 28.565421, "lon": 77.526521, "emoji": "🚩" },
+  { "id": "flag_4", "name": "Flag Point 4", "category": "Flag Post", "lat": 28.381961, "lon": 77.272702, "emoji": "🚩" },
+  { "id": "flag_5", "name": "Flag Point 5", "category": "Flag Post", "lat": 28.672540, "lon": 77.408542, "emoji": "🚩" },
+  { "id": "flag_6", "name": "Flag Point 6", "category": "Flag Post", "lat": 28.662932, "lon": 77.423781, "emoji": "🚩" },
+  { "id": "flag_7", "name": "Flag Point 7", "category": "Flag Post", "lat": 28.662945, "lon": 77.423748, "emoji": "🚩" },
+  { "id": "flag_8", "name": "Flag Point 8", "category": "Flag Post", "lat": 28.649948, "lon": 77.420624, "emoji": "🚩" },
+  { "id": "flag_9", "name": "Flag Point 9", "category": "Flag Post", "lat": 28.649900, "lon": 77.420700, "emoji": "🚩" },
+  { "id": "flag_10", "name": "Flag Point 10", "category": "Flag Post", "lat": 28.658854, "lon": 77.4203103, "emoji": "🚩" },
+  { "id": "flag_11", "name": "Flag Point 11", "category": "Flag Post", "lat": 28.642000, "lon": 77.421700, "emoji": "🚩" },
+  { "id": "flag_12", "name": "Flag Point 12", "category": "Flag Post", "lat": 28.645486, "lon": 77.421682, "emoji": "🚩" }
+]

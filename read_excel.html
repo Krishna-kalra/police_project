@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Excel Parser</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body style="font-family: sans-serif; padding: 20px;">
+    <h1>Upload Book1.xlsx</h1>
+    <input type="file" id="excelInput" onchange="handleFile(this.files[0])">
+    <hr>
+    <h2>Parsed JSON Output:</h2>
+    <pre id="output" style="white-space: pre-wrap; font-size: 14px; font-family: monospace; background: #eee; padding: 15px; border-radius: 8px;"></pre>
+
+    <script>
+        function handleFile(file) {
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    let result = {};
+                    workbook.SheetNames.forEach(sheetName => {
+                        const sheet = workbook.Sheets[sheetName];
+                        result[sheetName] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                    });
+                    document.getElementById('output').textContent = JSON.stringify(result, null, 2);
+                } catch (err) {
+                    document.getElementById('output').textContent = 'ERROR: ' + err.message;
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+    </script>
+</body>
+</html>

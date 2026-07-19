@@ -1,0 +1,1224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoSphere - Admin Data Studio</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Leaflet CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <!-- SheetJS (Excel Parser) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Database File -->
+    <script src="locations_db.js"></script>
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .custom-emoji-marker {
+            background: none !important;
+            border: none !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            overflow: visible !important;
+        }
+        @keyframes bounceEmoji {
+            0%, 100% {
+                transform: translateY(0) scale(1);
+                animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
+            }
+            50% {
+                transform: translateY(-10px) scale(1.08);
+                animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+            }
+        }
+        .bounce-emoji-inner {
+            display: inline-block;
+            font-size: 26px;
+            line-height: 1;
+            animation: bounceEmoji 1.6s infinite;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
+            transition: transform 0.2s ease, filter 0.2s ease;
+            cursor: pointer;
+        }
+        .bounce-emoji-inner:hover {
+            animation-play-state: paused;
+            transform: scale(1.3) translateY(-4px) !important;
+            filter: drop-shadow(0 8px 12px rgba(56, 189, 248, 0.7));
+        }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 h-screen w-screen flex flex-col overflow-hidden select-none">
+
+    <!-- Header -->
+    <header class="bg-slate-900 border-b border-slate-800 px-6 py-4 flex items-center justify-between z-10">
+        <div class="flex items-center gap-3">
+            <div class="bg-sky-500/10 p-2.5 rounded-xl text-sky-400">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 18H7.5M3.75 12h16.5" />
+                </svg>
+            </div>
+            <div>
+                <h1 class="text-lg font-bold tracking-tight text-white">GeoSphere Admin Studio</h1>
+                <p class="text-xs text-slate-400">Manage & Add Set Location Points</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+            <button onclick="resetToDefaults()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded-xl border border-slate-700 transition-all">
+                Reset to Defaults
+            </button>
+            <a href="index.html" class="flex items-center gap-2 px-4 py-2 bg-sky-500 hover:bg-sky-400 text-white text-xs font-semibold rounded-xl shadow-lg transition-all active:scale-95">
+                <span>🌐</span> Back to Main Viewer
+            </a>
+        </div>
+    </header>
+
+    <!-- Main Content Flex Workspace -->
+    <div class="flex-1 relative flex overflow-hidden">
+        
+        <!-- Left Sliding Panel: Data Input Form & Controls -->
+        <div id="adminSidebar" class="w-full lg:w-[480px] shrink-0 bg-slate-900 border-r border-slate-800 p-6 overflow-y-auto space-y-6 transition-all duration-300 transform translate-x-0 z-20">
+            
+            <div class="border-b border-slate-800 pb-4">
+                <h2 class="text-sm font-bold uppercase tracking-wider text-slate-300">Add New Location Point</h2>
+                <p class="text-xs text-slate-400 mt-1">Enter details or click anywhere on the map to auto-fill coordinates.</p>
+            </div>
+
+            <!-- Form -->
+            <form onsubmit="saveLocation(event)" class="space-y-4">
+                
+                <!-- Title & Category -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Location Title *</label>
+                    <input id="locTitle" type="text" required placeholder="e.g. City General Hospital, Flag Point, Central Station" class="w-full bg-slate-800 border border-slate-700 focus:border-sky-500 rounded-xl p-3 text-sm text-slate-100 outline-none transition-all placeholder:text-slate-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Category / Subtitle</label>
+                    <input id="locCategory" type="text" placeholder="e.g. Healthcare, Milestone, Point of Interest" class="w-full bg-slate-800 border border-slate-700 focus:border-sky-500 rounded-xl p-3 text-sm text-slate-100 outline-none transition-all placeholder:text-slate-500">
+                </div>
+
+                <!-- Coordinates Inputs -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <div class="flex justify-between items-center mb-1.5">
+                            <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Latitude *</label>
+                        </div>
+                        <input id="locLat" type="number" step="any" min="-90" max="90" required placeholder="e.g. 28.6728" class="w-full bg-slate-800 border border-slate-700 focus:border-sky-500 rounded-xl p-3 text-sm text-slate-100 outline-none transition-all placeholder:text-slate-500">
+                    </div>
+                    <div>
+                        <div class="flex justify-between items-center mb-1.5">
+                            <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Longitude *</label>
+                        </div>
+                        <input id="locLon" type="number" step="any" min="-180" max="180" required placeholder="e.g. 77.4138" class="w-full bg-slate-800 border border-slate-700 focus:border-sky-500 rounded-xl p-3 text-sm text-slate-100 outline-none transition-all placeholder:text-slate-500">
+                    </div>
+                </div>
+
+                <!-- Detected Landmark & Address Card -->
+                <div id="detectedLandmarkCard" class="hidden bg-slate-950/80 border border-sky-500/30 rounded-xl p-3 space-y-2 text-xs">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-sky-400 flex items-center gap-1">
+                            <span>🔍</span> Detected Nearby Landmark
+                        </span>
+                        <button type="button" onclick="applyDetectedLandmark()" class="text-[10px] bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 font-bold px-2 py-0.5 rounded-lg border border-sky-500/40 transition-all">
+                            Use as Title
+                        </button>
+                    </div>
+                    <p id="detectedLandmarkName" class="font-medium text-slate-200 truncate">Detecting...</p>
+                    <p id="nearestPatrolPostText" class="text-[10px] text-slate-400 font-mono"></p>
+                </div>
+
+                <div class="flex justify-end">
+                    <button type="button" onclick="getCurrentGPS()" class="text-xs text-sky-400 hover:text-sky-300 font-medium flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5">
+                            <path fill-rule="evenodd" d="M9.69 18.933a.75.75 0 0 0 1.078 0l5.625-5.625a6.75 6.75 0 1 0-10.156 0l5.625 5.625ZM10 11.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z" clip-rule="evenodd" />
+                        </svg>
+                        Get Device GPS
+                    </button>
+                </div>
+
+                <!-- Emoji Icon Customizer -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Select Emoji Icon</label>
+                    <div class="grid grid-cols-6 gap-2">
+                        <button type="button" onclick="pickEmoji('📍')" class="admin-emoji-btn border border-sky-500 bg-sky-500/10 text-xl p-2.5 rounded-xl hover:scale-110 transition-all">📍</button>
+                        <button type="button" onclick="pickEmoji('🚩')" class="admin-emoji-btn border border-slate-700 bg-slate-800 text-xl p-2.5 rounded-xl hover:scale-110 transition-all">🚩</button>
+                        <button type="button" onclick="pickEmoji('🎪')" class="admin-emoji-btn border border-slate-700 bg-slate-800 text-xl p-2.5 rounded-xl hover:scale-110 transition-all">🎪</button>
+                        <button type="button" onclick="pickEmoji('🏥')" class="admin-emoji-btn border border-slate-700 bg-slate-800 text-xl p-2.5 rounded-xl hover:scale-110 transition-all">🏥</button>
+                        <button type="button" onclick="pickEmoji('🍷')" class="admin-emoji-btn border border-slate-700 bg-slate-800 text-xl p-2.5 rounded-xl hover:scale-110 transition-all">🍷</button>
+                        <button type="button" onclick="pickEmoji('☪︎')" class="admin-emoji-btn border border-slate-700 bg-slate-800 text-xl p-2.5 rounded-xl hover:scale-110 transition-all">☪︎</button>
+                    </div>
+
+                    <div class="mt-2.5 flex items-center gap-2">
+                        <input id="customEmoji" type="text" maxlength="4" placeholder="Or enter custom emoji..." class="flex-1 bg-slate-800 border border-slate-700 focus:border-sky-500 rounded-xl px-3 py-2 text-xs text-slate-100 outline-none placeholder:text-slate-500">
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" class="w-full bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-semibold py-3.5 px-4 rounded-xl shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 text-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                    Add Location to Main View
+                </button>
+            </form>
+
+            <!-- Admin Route Operations Card -->
+            <div class="pt-4 border-t border-slate-800 space-y-3">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-sky-400 flex items-center gap-1.5">
+                        <span>🛣️</span> Police Patrol Corridors
+                    </h3>
+                    <span id="routeDistanceBadge" class="text-[10px] bg-sky-500/20 text-sky-300 font-mono font-bold px-2 py-0.5 rounded-lg border border-sky-500/30">
+                        0.0 km
+                    </span>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Select Route Corridor</label>
+                    <select id="routeSelect" onchange="onRouteSelectionChange()" class="w-full bg-slate-800 border border-slate-700 focus:border-sky-500 rounded-xl p-2.5 text-xs text-slate-100 outline-none transition-all">
+                        <option value="route_1">Route 1: Modinagar (Kadrabad) ➔ Sahibabad (Seema Border) - 39 km</option>
+                        <option value="route_2">Route 2: Niwadi (Nahar Wali Peer) ➔ Loni Border PS - 43.4 km</option>
+                        <option value="route_3">Route 3: DME Kashi Toll ➔ UP Gate Kaushambi PS - 50.3 km</option>
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <button id="toggleRouteBtn" onclick="toggleRouteLine()" class="flex items-center justify-center gap-1.5 bg-sky-500 hover:bg-sky-400 text-white font-semibold py-2.5 px-3 text-xs rounded-xl shadow transition-all active:scale-95">
+                        <span>🛤️</span> Draw Route
+                    </button>
+                    <button id="patrolAnimBtn" onclick="togglePatrolSimulation()" class="flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 px-3 text-xs rounded-xl shadow transition-all active:scale-95">
+                        <span>🚔</span> Start Patrol
+                    </button>
+                </div>
+
+                <div id="routeStatusText" class="text-[11px] text-slate-400 bg-slate-800/80 px-3 py-2 rounded-xl border border-slate-700/60 text-center font-mono">
+                    Select a corridor and click "Draw Route"
+                </div>
+            </div>
+
+            <!-- Nearby Locations Along Selected Route -->
+            <div class="pt-4 border-t border-slate-800">
+                <div class="flex justify-between items-center mb-2.5">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                        <span>📍</span> Nearby Route Landmarks & Posts
+                    </h3>
+                    <span id="routeStopsCountBadge" class="text-[10px] bg-slate-800 text-sky-400 font-bold px-2 py-0.5 rounded-full">0 Landmarks</span>
+                </div>
+                <div id="routeNearbyLocationsList" class="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                    <div class="py-4 text-center text-slate-500 text-xs italic">
+                        Click "Draw Route" to view nearby landmarks and police posts.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Import Excel Card -->
+            <div class="pt-4 border-t border-slate-800 space-y-3">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                        <span>📊</span> Upload Excel File to Database
+                    </h3>
+                </div>
+
+                <!-- Text fields for custom category and emoji -->
+                <div class="grid grid-cols-3 gap-2">
+                    <div class="col-span-2">
+                        <label class="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Category Title Text</label>
+                        <input id="excelCategoryInput" type="text" placeholder="e.g. Mandir, Gurudwara, Checkpost" class="w-full bg-slate-800 border border-slate-700 focus:border-amber-500 rounded-xl p-2.5 text-xs text-slate-100 outline-none transition-all placeholder:text-slate-500">
+                    </div>
+                    <div class="col-span-1">
+                        <label class="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Emoji Icon</label>
+                        <input id="excelEmojiInput" type="text" maxlength="4" value="🚩" placeholder="🚩" class="w-full bg-slate-800 border border-slate-700 focus:border-amber-500 rounded-xl p-2.5 text-xs text-slate-100 outline-none text-center text-sm font-bold">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold py-3 px-3 rounded-xl cursor-pointer text-xs transition-all shadow-lg active:scale-95 text-center">
+                        <span>📁</span> Upload & Save Excel (.xlsx) to Database
+                        <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" onchange="importExcelLocations(this.files[0])" class="hidden">
+                    </label>
+                </div>
+            </div>
+
+            <!-- Table of Configured Locations -->
+            <div class="pt-4 border-t border-slate-800 space-y-2.5">
+                <div class="flex items-center justify-between flex-wrap gap-2">
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox" id="selectAllCb" onchange="toggleSelectAll(this.checked)" class="w-4 h-4 rounded border-slate-700 bg-slate-900 text-sky-500 focus:ring-sky-500/30 cursor-pointer">
+                        <label for="selectAllCb" class="text-xs font-bold uppercase tracking-wider text-slate-300 cursor-pointer">Select All</label>
+                        <span id="locationsCountBadge" class="text-[10px] bg-slate-800 text-sky-400 font-bold px-2 py-0.5 rounded-full">0</span>
+                    </div>
+
+                    <div class="flex items-center gap-1.5">
+                        <button id="deleteSelectedBtn" onclick="deleteSelectedLocations()" disabled class="px-2.5 py-1.5 bg-slate-800 text-slate-500 rounded-lg text-xs font-semibold cursor-not-allowed border border-slate-700/50">
+                            🗑️ Delete Selected (0)
+                        </button>
+                        <button onclick="deleteAllData()" class="px-2.5 py-1.5 bg-red-950/80 hover:bg-red-900 border border-red-800/80 text-red-300 rounded-lg text-xs font-semibold transition-all active:scale-95">
+                            💥 Delete All
+                        </button>
+                        <button onclick="resetToDefaults()" title="Reset to initial default database" class="px-2 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-lg text-xs font-semibold transition-all">
+                            🔄
+                        </button>
+                    </div>
+                </div>
+
+                <div id="locationsTable" class="space-y-2 max-h-[280px] overflow-y-auto pr-1">
+                    <!-- Dynamic rendering -->
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Map Workspace -->
+        <div class="flex-1 relative h-full w-full bg-slate-900">
+            <!-- Floating Sidebar Toggle Button -->
+            <button id="sidebarToggleBtn" onclick="toggleAdminSidebar()" title="Toggle Sidebar Controls" class="absolute top-4 left-4 z-[999] bg-slate-900/90 hover:bg-slate-800 backdrop-blur border border-slate-700/80 text-sky-400 font-semibold px-3 py-2 rounded-xl shadow-2xl flex items-center gap-2 text-xs transition-all active:scale-95">
+                <span id="sidebarToggleIcon">◀</span>
+                <span id="sidebarToggleText">Hide Controls</span>
+            </button>
+
+            <div id="map" class="h-full w-full"></div>
+            
+            <div class="absolute top-4 left-44 z-[998] bg-slate-900/90 backdrop-blur border border-slate-700 px-4 py-2 rounded-xl shadow-xl text-xs text-slate-300 hidden md:block">
+                💡 <span class="font-semibold text-white">Click anywhere on the map</span> to pick Latitude & Longitude instantly!
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="fixed bottom-6 right-6 z-[1000] max-w-sm pointer-events-none transform translate-y-12 opacity-0 transition-all duration-300">
+        <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-2xl flex items-center gap-3">
+            <div id="toastIcon" class="p-1.5 rounded-lg text-sky-400 bg-sky-500/10">ℹ</div>
+            <div>
+                <h4 id="toastTitle" class="text-xs font-bold text-white uppercase tracking-wider">Admin Notice</h4>
+                <p id="toastMessage" class="text-xs text-slate-300 mt-0.5"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Selected emoji state
+        let selectedEmoji = "📍";
+        let locations = [];
+        let map;
+        let adminMarkerGroup;
+        let pickerPin = null;
+
+        let lastDetectedLandmark = "";
+        let isSidebarOpen = true;
+
+        function toggleAdminSidebar() {
+            const sidebar = document.getElementById('adminSidebar');
+            const toggleIcon = document.getElementById('sidebarToggleIcon');
+            const toggleText = document.getElementById('sidebarToggleText');
+
+            if (!sidebar) return;
+
+            isSidebarOpen = !isSidebarOpen;
+
+            if (isSidebarOpen) {
+                sidebar.classList.remove('-translate-x-full', 'w-0', 'p-0', 'overflow-hidden');
+                sidebar.classList.add('w-full', 'lg:w-[480px]', 'p-6');
+                if (toggleIcon) toggleIcon.textContent = '◀';
+                if (toggleText) toggleText.textContent = 'Hide Controls';
+            } else {
+                sidebar.classList.add('-translate-x-full', 'w-0', 'p-0', 'overflow-hidden');
+                sidebar.classList.remove('w-full', 'lg:w-[480px]', 'p-6');
+                if (toggleIcon) toggleIcon.textContent = '▶';
+                if (toggleText) toggleText.textContent = 'Show Controls';
+            }
+
+            setTimeout(() => {
+                if (map) map.invalidateSize();
+            }, 320);
+        }
+
+        window.onload = function() {
+            loadLocations();
+            initAdminMap();
+            renderTable();
+
+            document.getElementById('locLat')?.addEventListener('input', onCoordinatesInput);
+            document.getElementById('locLon')?.addEventListener('input', onCoordinatesInput);
+        };
+
+        function onCoordinatesInput() {
+            const lat = parseFloat(document.getElementById('locLat').value);
+            const lon = parseFloat(document.getElementById('locLon').value);
+
+            if (!isNaN(lat) && !isNaN(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
+                if (pickerPin) map.removeLayer(pickerPin);
+                pickerPin = L.marker([lat, lon]).addTo(map);
+                fetchNearbyLandmark(lat, lon);
+            }
+        }
+
+        async function fetchNearbyLandmark(lat, lon) {
+            const card = document.getElementById('detectedLandmarkCard');
+            const nameEl = document.getElementById('detectedLandmarkName');
+            const postEl = document.getElementById('nearestPatrolPostText');
+
+            if (!card) return;
+            card.classList.remove('hidden');
+            nameEl.textContent = "Searching nearby landmarks...";
+            postEl.textContent = "";
+
+            // 1. Calculate nearest police checkpoint/landmark from database
+            const nearestPolicePost = findNearestPoliceLandmark(lat, lon);
+            if (nearestPolicePost) {
+                postEl.textContent = `🚓 Nearest Patrol Landmark: ${nearestPolicePost.emoji} ${nearestPolicePost.name} (${nearestPolicePost.distKm} km)`;
+            }
+
+            // 2. Reverse geocode via Nominatim API
+            try {
+                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+                const data = await res.json();
+                if (data && (data.display_name || data.name)) {
+                    const cleanName = data.name || data.display_name.split(',').slice(0, 3).join(',');
+                    lastDetectedLandmark = cleanName;
+                    nameEl.textContent = `📍 ${cleanName}`;
+                    if (!document.getElementById('locCategory').value) {
+                        const typeStr = data.type || data.class || 'Landmark';
+                        document.getElementById('locCategory').value = typeStr.charAt(0).toUpperCase() + typeStr.slice(1);
+                    }
+                    return;
+                }
+            } catch(e) {
+                console.warn('Reverse geocode failed:', e);
+            }
+
+            if (nearestPolicePost) {
+                lastDetectedLandmark = `Near ${nearestPolicePost.name}`;
+                nameEl.textContent = `📍 Near ${nearestPolicePost.name}`;
+            } else {
+                nameEl.textContent = `Lat: ${lat.toFixed(4)}, Lon: ${lon.toFixed(4)}`;
+            }
+        }
+
+        function findNearestPoliceLandmark(lat, lon) {
+            let allPosts = [];
+            if (typeof GZB_POLICE_ROUTES !== 'undefined') {
+                GZB_POLICE_ROUTES.forEach(r => {
+                    r.waypoints.forEach(w => allPosts.push(w));
+                });
+            }
+            if (allPosts.length === 0) return null;
+
+            let minDist = Infinity;
+            let closest = null;
+
+            allPosts.forEach(post => {
+                const dist = calculateDistanceKm(lat, lon, post.lat, post.lon);
+                if (dist < minDist) {
+                    minDist = dist;
+                    closest = { ...post, distKm: dist.toFixed(2) };
+                }
+            });
+
+            return closest;
+        }
+
+        function applyDetectedLandmark() {
+            if (lastDetectedLandmark) {
+                document.getElementById('locTitle').value = lastDetectedLandmark;
+                showToast("Title Applied", `Updated Location Title to "${lastDetectedLandmark}"`, "success");
+            }
+        }
+
+        let pendingExcelItems = [];
+
+        function importExcelLocations(file) {
+            if (!file) return;
+            if (typeof XLSX === 'undefined') {
+                showToast("Parser Error", "XLSX library not loaded. Check internet connection.", "error");
+                return;
+            }
+
+            const customCategory = document.getElementById('excelCategoryInput')?.value.trim() || "";
+            const customEmoji = document.getElementById('excelEmojiInput')?.value.trim() || "🚩";
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    let addedCount = 0;
+
+                    workbook.SheetNames.forEach(sheetName => {
+                        const sheet = workbook.Sheets[sheetName];
+                        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+                        rows.forEach((row, idx) => {
+                            if (!row || row.length < 2) return;
+                            let title = "";
+                            let category = customCategory || sheetName || "Mandir / Gurudwara";
+                            let lat = null, lon = null;
+
+                            row.forEach(cell => {
+                                if (typeof cell === 'string') {
+                                    const str = cell.trim();
+                                    if (str.length > 2) {
+                                        if (!title || str.toLowerCase().includes('mandir') || str.toLowerCase().includes('gurudwara') || str.toLowerCase().includes('temple')) {
+                                            title = str;
+                                        }
+                                    }
+                                } else if (typeof cell === 'number') {
+                                    if (cell >= 8 && cell <= 38) lat = cell;
+                                    else if (cell >= 68 && cell <= 98) lon = cell;
+                                }
+                            });
+
+                            if (lat && lon) {
+                                if (!customCategory) {
+                                    if (title.toLowerCase().includes('gurudwara')) category = 'Gurudwara';
+                                    else if (title.toLowerCase().includes('mandir') || title.toLowerCase().includes('temple')) category = 'Mandir';
+                                }
+
+                                const newLoc = {
+                                    id: 'excel_' + Date.now() + '_' + idx,
+                                    name: title || `Location ${idx + 1}`,
+                                    category: category,
+                                    lat: lat,
+                                    lon: lon,
+                                    emoji: customEmoji
+                                };
+                                locations.push(newLoc);
+                                addedCount++;
+                            }
+                        });
+                    });
+
+                    if (addedCount > 0) {
+                        saveToStorage();
+                        refreshMapMarkers();
+                        renderTable();
+                        showToast("Database Updated!", `Added ${addedCount} locations with emoji ${customEmoji} under category "${customCategory || 'Excel Import'}"!`, "success");
+                        document.getElementById('excelFileInput').value = '';
+                    } else {
+                        showToast("Import Info", "Parsed sheet, no valid coordinate rows found.", "info");
+                    }
+                } catch (err) {
+                    showToast("Import Error", "Could not read Excel file: " + err.message, "error");
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function openExcelCustomizer() {
+            renderExcelPreview();
+            document.getElementById('excelCustomizerModal').classList.remove('hidden');
+        }
+
+        function closeExcelCustomizer() {
+            document.getElementById('excelCustomizerModal').classList.add('hidden');
+            document.getElementById('excelFileInput').value = '';
+        }
+
+        function setBatchEmoji(emoji) {
+            if (!emoji) return;
+            pendingExcelItems.forEach(item => item.emoji = emoji);
+            renderExcelPreview();
+        }
+
+        function setBatchCategory(cat) {
+            if (!cat) return;
+            pendingExcelItems.forEach(item => item.category = cat);
+            renderExcelPreview();
+        }
+
+        function renderExcelPreview() {
+            const list = document.getElementById('excelPreviewList');
+            const countBadge = document.getElementById('excelPreviewCount');
+            if (!list) return;
+            list.innerHTML = '';
+            countBadge.textContent = `${pendingExcelItems.length} Locations Found`;
+
+            pendingExcelItems.forEach((item, idx) => {
+                const row = document.createElement('div');
+                row.className = 'grid grid-cols-12 gap-2 items-center p-2 bg-slate-950 border border-slate-800 rounded-xl text-xs';
+                row.innerHTML = `
+                    <div class="col-span-1">
+                        <input type="text" maxlength="4" value="${item.emoji}" onchange="pendingExcelItems[${idx}].emoji=this.value" class="w-full bg-slate-800 border border-slate-700 text-center text-sm p-1 rounded-lg">
+                    </div>
+                    <div class="col-span-5">
+                        <input type="text" value="${item.name}" onchange="pendingExcelItems[${idx}].name=this.value" class="w-full bg-slate-800 border border-slate-700 text-xs p-1 px-2 rounded-lg text-slate-100">
+                    </div>
+                    <div class="col-span-4">
+                        <input type="text" value="${item.category}" onchange="pendingExcelItems[${idx}].category=this.value" class="w-full bg-slate-800 border border-slate-700 text-xs p-1 px-2 rounded-lg text-slate-100">
+                    </div>
+                    <div class="col-span-2 text-right font-mono text-[10px] text-slate-400">
+                        ${item.lat.toFixed(3)}, ${item.lon.toFixed(3)}
+                    </div>
+                `;
+                list.appendChild(row);
+            });
+        }
+
+        function confirmExcelImport() {
+            let addedCount = 0;
+            pendingExcelItems.forEach((item, idx) => {
+                const newLoc = {
+                    id: 'excel_' + Date.now() + '_' + idx,
+                    name: item.name,
+                    category: item.category || 'Excel Import',
+                    lat: item.lat,
+                    lon: item.lon,
+                    emoji: item.emoji || '🚩'
+                };
+                locations.push(newLoc);
+                addedCount++;
+            });
+
+            saveToStorage();
+            refreshMapMarkers();
+            renderTable();
+            closeExcelCustomizer();
+            showToast("Excel Imported", `Saved ${addedCount} locations to map database!`, "success");
+        }
+
+        // Edit Location Functions
+        function openEditModal(id) {
+            const loc = locations.find(l => l.id === id);
+            if (!loc) return;
+
+            document.getElementById('editLocId').value = loc.id;
+            document.getElementById('editLocTitle').value = loc.name;
+            document.getElementById('editLocCategory').value = loc.category || '';
+            document.getElementById('editLocEmoji').value = loc.emoji || '📍';
+            document.getElementById('editLocLat').value = loc.lat;
+            document.getElementById('editLocLon').value = loc.lon;
+
+            document.getElementById('editLocationModal').classList.remove('hidden');
+        }
+
+        function closeEditModal() {
+            document.getElementById('editLocationModal').classList.add('hidden');
+        }
+
+        function saveEditLocation() {
+            const id = document.getElementById('editLocId').value;
+            const loc = locations.find(l => l.id === id);
+            if (!loc) return;
+
+            loc.name = document.getElementById('editLocTitle').value.trim() || loc.name;
+            loc.category = document.getElementById('editLocCategory').value.trim() || 'General';
+            loc.emoji = document.getElementById('editLocEmoji').value.trim() || '📍';
+            loc.lat = parseFloat(document.getElementById('editLocLat').value) || loc.lat;
+            loc.lon = parseFloat(document.getElementById('editLocLon').value) || loc.lon;
+
+            saveToStorage();
+            refreshMapMarkers();
+            renderTable();
+            closeEditModal();
+            showToast("Updated", `Updated "${loc.name}" (${loc.emoji})`, "success");
+        }
+
+        function loadLocations() {
+            const stored = localStorage.getItem('geosphere_locations');
+            const dbLocations = typeof DEFAULT_LOCATIONS !== 'undefined' ? DEFAULT_LOCATIONS : [];
+            if (stored) {
+                try {
+                    locations = JSON.parse(stored);
+                } catch(e) {
+                    locations = dbLocations;
+                    saveToStorage();
+                }
+            } else {
+                locations = dbLocations;
+                saveToStorage();
+            }
+        }
+
+        function saveToStorage() {
+            localStorage.setItem('geosphere_locations', JSON.stringify(locations));
+        }
+
+        function initAdminMap() {
+            map = L.map('map', { zoomControl: true, attributionControl: false }).setView([28.65, 77.42], 12);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, minZoom: 2 }).addTo(map);
+            adminMarkerGroup = L.layerGroup().addTo(map);
+
+            map.on('click', function(e) {
+                const lat = e.latlng.lat;
+                const lon = e.latlng.lng;
+                document.getElementById('locLat').value = lat.toFixed(5);
+                document.getElementById('locLon').value = lon.toFixed(5);
+
+                if (pickerPin) map.removeLayer(pickerPin);
+                pickerPin = L.marker([lat, lon]).addTo(map);
+                showToast("Coordinates Picked", `Lat: ${lat.toFixed(4)}, Lon: ${lon.toFixed(4)}`, "info");
+
+                fetchNearbyLandmark(lat, lon);
+            });
+
+            refreshMapMarkers();
+            setTimeout(() => {
+                if (map) map.invalidateSize();
+            }, 300);
+        }
+
+        function refreshMapMarkers() {
+            adminMarkerGroup.clearLayers();
+            locations.forEach(loc => {
+                const icon = L.divIcon({
+                    html: `<div class="bounce-emoji-inner">${loc.emoji}</div>`,
+                    className: 'custom-emoji-marker',
+                    iconSize: [30, 30],
+                    iconAnchor: [15, 15]
+                });
+                const m = L.marker([loc.lat, loc.lon], { icon }).addTo(adminMarkerGroup);
+                m.bindPopup(`<b>${loc.emoji} ${loc.name}</b><br>${loc.category || ''}`);
+            });
+        }
+
+        // Global Route Variables
+        let routeCasingPolyline = null;
+        let routeMainPolyline = null;
+        let activeRoadLatLngs = [];
+        let isRouteVisible = false;
+        let patrolVehicleMarker = null;
+        let patrolAnimationId = null;
+        let isPatrolling = false;
+
+        function getSelectedRouteWaypoints() {
+            const selectedVal = document.getElementById('routeSelect')?.value || 'route_1';
+            const foundRoute = typeof GZB_POLICE_ROUTES !== 'undefined' ? GZB_POLICE_ROUTES.find(r => r.id === selectedVal) : null;
+            if (foundRoute) return foundRoute;
+            return typeof GZB_POLICE_ROUTES !== 'undefined' ? GZB_POLICE_ROUTES[0] : { name: "Route 1", waypoints: locations };
+        }
+
+        function renderNearbyRouteLandmarks(locsToUse) {
+            const container = document.getElementById('routeNearbyLocationsList');
+            const badge = document.getElementById('routeStopsCountBadge');
+
+            if (!container) return;
+            badge.textContent = `${locsToUse.length} Landmarks`;
+            container.innerHTML = '';
+
+            locsToUse.forEach((loc, idx) => {
+                const item = document.createElement('div');
+                item.className = 'flex items-center justify-between p-2.5 bg-slate-900 border border-slate-800 rounded-xl hover:border-sky-500/50 cursor-pointer transition-all group';
+                item.onclick = () => {
+                    map.flyTo([loc.lat, loc.lon], 15, { duration: 1.2 });
+                    showToast("Landmark Focus", `${loc.emoji} ${loc.name}`, "info");
+                };
+                item.innerHTML = `
+                    <div class="flex items-center gap-2.5 overflow-hidden">
+                        <span class="text-lg shrink-0 group-hover:scale-110 transition-transform">${loc.emoji}</span>
+                        <div class="truncate">
+                            <p class="text-xs font-semibold text-slate-200 truncate">${idx + 1}. ${loc.name}</p>
+                            <p class="text-[10px] text-sky-400 font-mono">${loc.category || loc.type || 'Point of Interest'} • ${loc.lat.toFixed(4)}, ${loc.lon.toFixed(4)}</p>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function onRouteSelectionChange() {
+            if (isRouteVisible) {
+                drawRouteLine();
+            } else {
+                const routeObj = getSelectedRouteWaypoints();
+                renderNearbyRouteLandmarks(routeObj.waypoints);
+            }
+        }
+
+        function toggleRouteLine() {
+            if (isRouteVisible) {
+                clearRouteLine();
+            } else {
+                drawRouteLine();
+            }
+        }
+
+        async function drawRouteLine() {
+            const routeObj = getSelectedRouteWaypoints();
+            const waypoints = routeObj.waypoints;
+
+            if (waypoints.length < 2) {
+                showToast("Insufficient Points", "Need at least 2 locations to draw a route.", "error");
+                return;
+            }
+
+            // Draw ONLY the waypoints of this specific route on map
+            adminMarkerGroup.clearLayers();
+            waypoints.forEach(loc => {
+                const icon = L.divIcon({
+                    html: `<div class="bounce-emoji-inner">${loc.emoji}</div>`,
+                    className: 'custom-emoji-marker',
+                    iconSize: [30, 30],
+                    iconAnchor: [15, 15]
+                });
+                const m = L.marker([loc.lat, loc.lon], { icon }).addTo(adminMarkerGroup);
+                m.bindPopup(`<b>${loc.emoji} ${loc.name}</b><br><span class="text-xs text-sky-400 font-medium">${loc.category || loc.type || ''}</span>`);
+            });
+
+            renderNearbyRouteLandmarks(waypoints);
+
+            showToast("Calculating Route...", `Fetching Google Maps driving route for ${routeObj.name}...`, "info");
+
+            const routeData = await fetchRealRoadRoute(waypoints);
+            
+            let latlngs;
+            let totalKm;
+            let durationStr = "";
+
+            if (routeData && routeData.roadLatLngs && routeData.roadLatLngs.length > 0) {
+                latlngs = routeData.roadLatLngs;
+                totalKm = routeData.distanceKm;
+                durationStr = ` • est. ${routeData.durationMins} mins`;
+            } else {
+                latlngs = waypoints.map(l => [l.lat, l.lon]);
+                totalKm = routeObj.expectedKm || (typeof calculateTotalRouteDistance !== 'undefined' ? calculateTotalRouteDistance(waypoints) : '0.00');
+            }
+
+            activeRoadLatLngs = latlngs;
+
+            if (routeCasingPolyline) adminMarkerGroup.removeLayer(routeCasingPolyline);
+            if (routeMainPolyline) adminMarkerGroup.removeLayer(routeMainPolyline);
+
+            routeCasingPolyline = L.polyline(latlngs, {
+                color: '#1e3a8a',
+                weight: 8,
+                opacity: 0.9,
+                lineCap: 'round',
+                lineJoin: 'round'
+            }).addTo(adminMarkerGroup);
+
+            routeMainPolyline = L.polyline(latlngs, {
+                color: '#38bdf8',
+                weight: 4,
+                opacity: 1,
+                lineCap: 'round',
+                lineJoin: 'round'
+            }).addTo(adminMarkerGroup);
+
+            document.getElementById('routeDistanceBadge').textContent = `${totalKm} km`;
+            document.getElementById('toggleRouteBtn').innerHTML = `<span>❌</span> Clear Route`;
+            document.getElementById('toggleRouteBtn').className = "flex items-center justify-center gap-1.5 bg-rose-600 hover:bg-rose-500 text-white font-semibold py-2.5 px-3 text-xs rounded-xl shadow transition-all active:scale-95";
+            document.getElementById('routeStatusText').textContent = `🛣️ ${routeObj.name} (${totalKm} km${durationStr})`;
+
+            isRouteVisible = true;
+            map.fitBounds(routeMainPolyline.getBounds(), { padding: [50, 50] });
+            showToast("Real Road Route Loaded", `Mapped ${routeObj.name} (${totalKm} km) + ${nearbyMarkedLocations.length} nearby landmarks showcased!`, "success");
+        }
+
+        function clearRouteLine() {
+            if (routeCasingPolyline) { adminMarkerGroup.removeLayer(routeCasingPolyline); routeCasingPolyline = null; }
+            if (routeMainPolyline) { adminMarkerGroup.removeLayer(routeMainPolyline); routeMainPolyline = null; }
+            activeRoadLatLngs = [];
+            if (isPatrolling) stopPatrolSimulation();
+            isRouteVisible = false;
+            refreshMapMarkers();
+            document.getElementById('routeDistanceBadge').textContent = `0.0 km`;
+            document.getElementById('toggleRouteBtn').innerHTML = `<span>🛤️</span> Draw Route`;
+            document.getElementById('toggleRouteBtn').className = "flex items-center justify-center gap-1.5 bg-sky-500 hover:bg-sky-400 text-white font-semibold py-2.5 px-3 text-xs rounded-xl shadow transition-all active:scale-95";
+            document.getElementById('routeStatusText').textContent = `Select a corridor and click "Draw Route"`;
+            document.getElementById('routeNearbyLocationsList').innerHTML = `<div class="py-4 text-center text-slate-500 text-xs italic">Click "Draw Route" to view nearby landmarks and police posts.</div>`;
+            document.getElementById('routeStopsCountBadge').textContent = `0 Landmarks`;
+        }
+
+        function togglePatrolSimulation() {
+            if (isPatrolling) {
+                stopPatrolSimulation();
+            } else {
+                startPatrolSimulation();
+            }
+        }
+
+        async function startPatrolSimulation() {
+            if (!isRouteVisible || activeRoadLatLngs.length === 0) {
+                await drawRouteLine();
+            }
+
+            if (activeRoadLatLngs.length === 0) return;
+
+            isPatrolling = true;
+            document.getElementById('patrolAnimBtn').innerHTML = `<span>⏸️</span> Pause Patrol`;
+            document.getElementById('patrolAnimBtn').className = "flex items-center justify-center gap-1.5 bg-amber-600 hover:bg-amber-500 text-white font-semibold py-2.5 px-3 text-xs rounded-xl shadow transition-all active:scale-95";
+
+            let currentIndex = 0;
+            const totalPoints = activeRoadLatLngs.length;
+
+            if (!patrolVehicleMarker) {
+                const vehicleIcon = L.divIcon({
+                    html: `<div style="font-size:30px; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.6));">🚔</div>`,
+                    className: 'custom-emoji-marker',
+                    iconSize: [36, 36],
+                    iconAnchor: [18, 18]
+                });
+                patrolVehicleMarker = L.marker(activeRoadLatLngs[0], { icon: vehicleIcon, zIndexOffset: 1000 }).addTo(map);
+            } else {
+                patrolVehicleMarker.addTo(map);
+            }
+
+            function animateRoadStep() {
+                if (!isPatrolling) return;
+
+                currentIndex = (currentIndex + 1) % totalPoints;
+                const pos = activeRoadLatLngs[currentIndex];
+                patrolVehicleMarker.setLatLng(pos);
+
+                const percent = Math.round((currentIndex / totalPoints) * 100);
+                document.getElementById('routeStatusText').textContent = `🚔 Real Patrol Active (${percent}% completed)`;
+
+                patrolAnimationId = setTimeout(() => {
+                    requestAnimationFrame(animateRoadStep);
+                }, 50);
+            }
+
+            animateRoadStep();
+            showToast("Patrol Started", "Patrolling on real Google Maps driving roads!", "success");
+        }
+
+        function stopPatrolSimulation() {
+            isPatrolling = false;
+            if (patrolAnimationId) {
+                clearTimeout(patrolAnimationId);
+                patrolAnimationId = null;
+            }
+            if (patrolVehicleMarker) {
+                map.removeLayer(patrolVehicleMarker);
+                patrolVehicleMarker = null;
+            }
+            document.getElementById('patrolAnimBtn').innerHTML = `<span>🚔</span> Start Patrol`;
+            document.getElementById('patrolAnimBtn').className = "flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 px-3 text-xs rounded-xl shadow transition-all active:scale-95";
+            document.getElementById('routeStatusText').textContent = `Patrol Paused`;
+            showToast("Patrol Paused", "Stopped patrol simulation.", "info");
+        }
+
+        function pickEmoji(emoji) {
+            selectedEmoji = emoji;
+            document.querySelectorAll('.admin-emoji-btn').forEach(btn => {
+                if (btn.textContent.trim() === emoji) {
+                    btn.classList.add('border-sky-500', 'bg-sky-500/10');
+                    btn.classList.remove('border-slate-700', 'bg-slate-800');
+                } else {
+                    btn.classList.add('border-slate-700', 'bg-slate-800');
+                    btn.classList.remove('border-sky-500', 'bg-sky-500/10');
+                }
+            });
+            document.getElementById('customEmoji').value = '';
+        }
+
+        function saveLocation(e) {
+            e.preventDefault();
+            const title = document.getElementById('locTitle').value.trim();
+            const category = document.getElementById('locCategory').value.trim();
+            const lat = parseFloat(document.getElementById('locLat').value);
+            const lon = parseFloat(document.getElementById('locLon').value);
+            const customE = document.getElementById('customEmoji').value.trim();
+
+            const emojiToUse = customE || selectedEmoji;
+            const nearestPost = findNearestPoliceLandmark(lat, lon);
+
+            const newLoc = {
+                id: 'loc_' + Date.now(),
+                name: title,
+                category: category || 'Location',
+                lat: lat,
+                lon: lon,
+                emoji: emojiToUse,
+                detectedLandmark: lastDetectedLandmark || title,
+                nearestPost: nearestPost ? `${nearestPost.emoji} ${nearestPost.name} (${nearestPost.distKm} km)` : ''
+            };
+
+            locations.push(newLoc);
+            saveToStorage();
+            refreshMapMarkers();
+            renderTable();
+
+            // Clear inputs
+            document.getElementById('locTitle').value = '';
+            document.getElementById('locCategory').value = '';
+            document.getElementById('detectedLandmarkCard')?.classList.add('hidden');
+            showToast("Location Added", `Saved "${title}" (${emojiToUse}) to Main View!`, "success");
+        }
+
+        let selectedLocationIds = new Set();
+
+        function toggleSelectAll(checked) {
+            if (checked) {
+                locations.forEach(loc => selectedLocationIds.add(loc.id));
+            } else {
+                selectedLocationIds.clear();
+            }
+            renderTable();
+        }
+
+        function toggleSelectLocation(id, checked) {
+            if (checked) {
+                selectedLocationIds.add(id);
+            } else {
+                selectedLocationIds.delete(id);
+            }
+            updateSelectionUI();
+        }
+
+        function updateSelectionUI() {
+            const count = selectedLocationIds.size;
+            const btn = document.getElementById('deleteSelectedBtn');
+            const selectAllCb = document.getElementById('selectAllCb');
+
+            if (btn) {
+                btn.textContent = `🗑️ Delete Selected (${count})`;
+                btn.disabled = count === 0;
+                btn.className = count === 0 
+                    ? "px-2.5 py-1.5 bg-slate-800 text-slate-500 rounded-lg text-xs font-semibold cursor-not-allowed border border-slate-700/50" 
+                    : "px-2.5 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-semibold transition-all shadow active:scale-95 cursor-pointer";
+            }
+
+            if (selectAllCb) {
+                selectAllCb.checked = locations.length > 0 && selectedLocationIds.size === locations.length;
+            }
+        }
+
+        function deleteSelectedLocations() {
+            if (selectedLocationIds.size === 0) return;
+
+            if (confirm(`Are you sure you want to delete ${selectedLocationIds.size} selected location(s)?`)) {
+                const count = selectedLocationIds.size;
+                locations = locations.filter(loc => !selectedLocationIds.has(loc.id));
+                selectedLocationIds.clear();
+                saveToStorage();
+                refreshMapMarkers();
+                renderTable();
+                showToast("Locations Deleted", `Removed ${count} selected location(s) from database.`, "info");
+            }
+        }
+
+        function deleteAllData() {
+            if (locations.length === 0) {
+                showToast("Empty Database", "No locations to delete.", "info");
+                return;
+            }
+
+            if (confirm("⚠️ WARNING: Are you sure you want to DELETE ALL LOCATIONS from the database? This cannot be undone.")) {
+                const total = locations.length;
+                locations = [];
+                selectedLocationIds.clear();
+                saveToStorage();
+                refreshMapMarkers();
+                renderTable();
+                showToast("Database Cleared", `Wiped all ${total} locations from database.`, "error");
+            }
+        }
+
+        function deleteLocation(id) {
+            locations = locations.filter(l => l.id !== id);
+            selectedLocationIds.delete(id);
+            saveToStorage();
+            refreshMapMarkers();
+            renderTable();
+            showToast("Deleted", "Location removed from database.", "info");
+        }
+
+        function resetToDefaults() {
+            locations = [...DEFAULT_LOCATIONS];
+            selectedLocationIds.clear();
+            saveToStorage();
+            refreshMapMarkers();
+            renderTable();
+            showToast("Reset Done", "Restored standard locations.", "info");
+        }
+
+        function renderTable() {
+            const table = document.getElementById('locationsTable');
+            const badge = document.getElementById('locationsCountBadge');
+            if (!table) return;
+
+            if (badge) badge.textContent = locations.length;
+            table.innerHTML = '';
+
+            if (locations.length === 0) {
+                table.innerHTML = `<div class="py-6 text-center text-slate-500 text-xs italic">No locations in database. Click map or upload Excel to add locations.</div>`;
+                updateSelectionUI();
+                return;
+            }
+
+            locations.forEach(loc => {
+                const nearestPost = findNearestPoliceLandmark(loc.lat, loc.lon);
+                const postInfo = nearestPost ? `Near: ${nearestPost.emoji} ${nearestPost.name} (${nearestPost.distKm} km)` : '';
+                const isChecked = selectedLocationIds.has(loc.id);
+
+                const row = document.createElement('div');
+                row.className = `flex items-center justify-between p-2.5 bg-slate-800/80 border ${isChecked ? 'border-sky-500 bg-sky-950/20' : 'border-slate-700/60'} rounded-xl text-xs hover:border-sky-500/50 transition-all cursor-pointer`;
+                
+                row.onclick = (e) => {
+                    if (e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') {
+                        map.flyTo([loc.lat, loc.lon], 15, { duration: 1.2 });
+                    }
+                };
+
+                row.innerHTML = `
+                    <div class="flex items-center gap-2.5 overflow-hidden">
+                        <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleSelectLocation('${loc.id}', this.checked)" class="w-4 h-4 shrink-0 rounded border-slate-700 bg-slate-900 text-sky-500 focus:ring-sky-500/30 cursor-pointer">
+                        <span class="text-xl shrink-0">${loc.emoji}</span>
+                        <div class="truncate">
+                            <p class="font-semibold text-slate-100 truncate">${loc.name}</p>
+                            <p class="text-[10px] text-slate-400 font-mono truncate">${loc.category} | ${loc.lat.toFixed(4)}, ${loc.lon.toFixed(4)}</p>
+                            ${postInfo ? `<p class="text-[9px] text-sky-400 font-mono truncate mt-0.5">${postInfo}</p>` : ''}
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <button onclick="openEditModal('${loc.id}')" title="Edit Location & Emoji" class="p-1.5 text-slate-400 hover:text-sky-300 hover:bg-sky-500/10 rounded-lg transition-all">
+                            ✏️
+                        </button>
+                        <button onclick="deleteLocation('${loc.id}')" title="Delete Location" class="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all">
+                            🗑️
+                        </button>
+                    </div>
+                `;
+                table.appendChild(row);
+            });
+
+            updateSelectionUI();
+        }
+
+        function getCurrentGPS() {
+            if (!navigator.geolocation) return;
+            navigator.geolocation.getCurrentPosition(pos => {
+                const lat = pos.coords.latitude;
+                const lon = pos.coords.longitude;
+                document.getElementById('locLat').value = lat.toFixed(5);
+                document.getElementById('locLon').value = lon.toFixed(5);
+                showToast("GPS Captured", "Form updated with live coordinates.", "success");
+                fetchNearbyLandmark(lat, lon);
+            });
+        }
+
+        function showToast(title, msg, type = "info") {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastTitle').textContent = title;
+            document.getElementById('toastMessage').textContent = msg;
+            toast.classList.remove('translate-y-12', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-12', 'opacity-0');
+            }, 3000);
+        }
+    </script>
+    <!-- Excel Import Customizer Modal -->
+    <div id="excelCustomizerModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center z-[2000] hidden p-4">
+        <div class="bg-slate-900 border border-slate-700 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+            <div class="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-950">
+                <h3 class="text-sm font-bold uppercase tracking-wider text-amber-400 flex items-center gap-2">
+                    <span>📊</span> Customize & Categorize Excel Import
+                </h3>
+                <button onclick="closeExcelCustomizer()" class="text-slate-400 hover:text-white text-lg">✕</button>
+            </div>
+            
+            <div class="p-5 overflow-y-auto space-y-4 flex-1">
+                <!-- Batch Controls -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-950/60 p-3.5 rounded-xl border border-slate-800">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Apply Emoji Icon to All</label>
+                        <div class="flex gap-2">
+                            <button type="button" onclick="setBatchEmoji('🚩')" class="bg-slate-800 hover:bg-slate-700 text-lg px-3 py-1 rounded-xl border border-slate-700">🚩</button>
+                            <button type="button" onclick="setBatchEmoji('🛕')" class="bg-slate-800 hover:bg-slate-700 text-lg px-3 py-1 rounded-xl border border-slate-700">🛕</button>
+                            <button type="button" onclick="setBatchEmoji('🕌')" class="bg-slate-800 hover:bg-slate-700 text-lg px-3 py-1 rounded-xl border border-slate-700">🕌</button>
+                            <button type="button" onclick="setBatchEmoji('📍')" class="bg-slate-800 hover:bg-slate-700 text-lg px-3 py-1 rounded-xl border border-slate-700">📍</button>
+                            <input id="batchEmojiInput" type="text" maxlength="4" placeholder="Custom..." oninput="setBatchEmoji(this.value)" class="w-20 bg-slate-800 border border-slate-700 rounded-xl px-2.5 py-1 text-xs text-center text-slate-100 outline-none">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Apply Category to All</label>
+                        <select id="batchCategorySelect" onchange="setBatchCategory(this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-xs text-slate-100 outline-none">
+                            <option value="Mandir">Mandir</option>
+                            <option value="Gurudwara">Gurudwara</option>
+                            <option value="Shrine / Heritage">Shrine / Heritage</option>
+                            <option value="Police Station">Police Station</option>
+                            <option value="General Landmark">General Landmark</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Preview Table -->
+                <div>
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-slate-300 mb-2">Detected Locations Preview</h4>
+                    <div id="excelPreviewList" class="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                        <!-- Dynamic items -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 border-t border-slate-800 bg-slate-950 flex justify-between items-center">
+                <span id="excelPreviewCount" class="text-xs font-mono text-slate-400">0 Items</span>
+                <div class="flex gap-2">
+                    <button onclick="closeExcelCustomizer()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-xl transition-all">Cancel</button>
+                    <button onclick="confirmExcelImport()" class="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow transition-all">Save & Add to Map Database</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Location Modal -->
+    <div id="editLocationModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center z-[2000] hidden p-4">
+        <div class="bg-slate-900 border border-slate-700 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden p-5 space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h3 class="text-sm font-bold uppercase tracking-wider text-sky-400 flex items-center gap-1.5">
+                    <span>✏️</span> Edit Location Entry
+                </h3>
+                <button onclick="closeEditModal()" class="text-slate-400 hover:text-white text-lg">✕</button>
+            </div>
+
+            <input type="hidden" id="editLocId">
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Title</label>
+                <input id="editLocTitle" type="text" class="w-full bg-slate-800 border border-slate-700 focus:border-sky-500 rounded-xl p-2.5 text-xs text-slate-100 outline-none">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Category</label>
+                <input id="editLocCategory" type="text" class="w-full bg-slate-800 border border-slate-700 focus:border-sky-500 rounded-xl p-2.5 text-xs text-slate-100 outline-none">
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Emoji Icon</label>
+                    <input id="editLocEmoji" type="text" maxlength="4" class="w-full bg-slate-800 border border-slate-700 focus:border-sky-500 rounded-xl p-2.5 text-xs text-slate-100 outline-none text-center text-lg">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Quick Select</label>
+                    <div class="flex gap-1 pt-1">
+                        <button type="button" onclick="document.getElementById('editLocEmoji').value='🚩'" class="p-1.5 bg-slate-800 rounded-lg text-sm hover:scale-110">🚩</button>
+                        <button type="button" onclick="document.getElementById('editLocEmoji').value='📍'" class="p-1.5 bg-slate-800 rounded-lg text-sm hover:scale-110">📍</button>
+                        <button type="button" onclick="document.getElementById('editLocEmoji').value='🛕'" class="p-1.5 bg-slate-800 rounded-lg text-sm hover:scale-110">🛕</button>
+                        <button type="button" onclick="document.getElementById('editLocEmoji').value='🚓'" class="p-1.5 bg-slate-800 rounded-lg text-sm hover:scale-110">🚓</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Latitude</label>
+                    <input id="editLocLat" type="number" step="any" class="w-full bg-slate-800 border border-slate-700 focus:border-sky-500 rounded-xl p-2.5 text-xs text-slate-100 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Longitude</label>
+                    <input id="editLocLon" type="number" step="any" class="w-full bg-slate-800 border border-slate-700 focus:border-sky-500 rounded-xl p-2.5 text-xs text-slate-100 outline-none">
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
+                <button onclick="closeEditModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-xl">Cancel</button>
+                <button onclick="saveEditLocation()" class="px-5 py-2 bg-sky-500 hover:bg-sky-400 text-white font-bold text-xs rounded-xl">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
