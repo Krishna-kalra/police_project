@@ -205,19 +205,59 @@
                 <div id="routeStatusText" class="text-[11px] text-slate-400 bg-slate-800/80 px-3 py-2 rounded-xl border border-slate-700/60 text-center font-mono">
                     Select a corridor and click "Draw Route"
                 </div>
+
+                <!-- Written Route Intelligence & Stats Card -->
+                <div id="routeStatsSummaryCard" class="bg-slate-950/80 border border-sky-500/30 rounded-2xl p-3.5 space-y-3 shadow-xl">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                        <div class="overflow-hidden pr-2">
+                            <h4 id="routeCardTitle" class="text-xs font-bold text-sky-400 truncate">Route Intelligence</h4>
+                            <p id="routeCardSub" class="text-[10px] text-slate-400 font-mono">Select route to calculate stats</p>
+                        </div>
+                        <button onclick="copyRouteWrittenReport()" class="shrink-0 px-2.5 py-1 bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 text-[10px] font-semibold rounded-lg border border-sky-500/30 transition-all flex items-center gap-1">
+                            <span>📋</span> Copy Report
+                        </button>
+                    </div>
+                    
+                    <!-- Corridor Buffer Radius Controls -->
+                    <div class="flex items-center justify-between text-[10px]">
+                        <span class="text-slate-400 font-semibold uppercase tracking-wider">Buffer Radius:</span>
+                        <div id="bufferRadiusBtnGroup" class="flex gap-1">
+                            <button onclick="setRouteBufferRadius(0.5)" data-radius="0.5" class="buffer-rad-btn px-1.5 py-0.5 rounded border text-[10px] bg-slate-800 text-slate-300 border-slate-700">0.5km</button>
+                            <button onclick="setRouteBufferRadius(1.0)" data-radius="1.0" class="buffer-rad-btn px-1.5 py-0.5 rounded border text-[10px] bg-slate-800 text-slate-300 border-slate-700">1.0km</button>
+                            <button onclick="setRouteBufferRadius(1.5)" data-radius="1.5" class="buffer-rad-btn px-1.5 py-0.5 rounded border text-[10px] bg-sky-500/20 text-sky-300 border-sky-500/40 font-bold">1.5km</button>
+                            <button onclick="setRouteBufferRadius(2.0)" data-radius="2.0" class="buffer-rad-btn px-1.5 py-0.5 rounded border text-[10px] bg-slate-800 text-slate-300 border-slate-700">2.0km</button>
+                        </div>
+                    </div>
+
+                    <!-- Category Stats Pills -->
+                    <div id="routeCategoryBreakdownGrid" class="grid grid-cols-2 gap-1.5 text-[10px]">
+                        <div class="py-2 col-span-2 text-center text-slate-500 italic text-[10px]">Select route to view stats</div>
+                    </div>
+                </div>
             </div>
 
             <!-- Nearby Locations Along Selected Route -->
-            <div class="pt-4 border-t border-slate-800">
-                <div class="flex justify-between items-center mb-2.5">
+            <div class="pt-4 border-t border-slate-800 space-y-2">
+                <div class="flex justify-between items-center">
                     <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-                        <span>📍</span> Nearby Route Landmarks & Posts
+                        <span>📍</span> Places Along Corridor
                     </h3>
-                    <span id="routeStopsCountBadge" class="text-[10px] bg-slate-800 text-sky-400 font-bold px-2 py-0.5 rounded-full">0 Landmarks</span>
+                    <span id="routeStopsCountBadge" class="text-[10px] bg-slate-800 text-sky-400 font-bold px-2 py-0.5 rounded-full border border-slate-700">0 Places</span>
                 </div>
-                <div id="routeNearbyLocationsList" class="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                
+                <!-- Filter Pills for Places Along Route -->
+                <div class="flex gap-1 overflow-x-auto pb-1 text-[10px]">
+                    <button onclick="filterRoutePlacesTab('all')" id="tabRoutePlacesAll" class="px-2 py-0.5 rounded-lg bg-sky-500/20 text-sky-300 border border-sky-500/30 font-bold shrink-0">
+                        All Places
+                    </button>
+                    <button onclick="filterRoutePlacesTab('waypoints')" id="tabRoutePlacesWp" class="px-2 py-0.5 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 shrink-0">
+                        Checkposts Only
+                    </button>
+                </div>
+
+                <div id="routeNearbyLocationsList" class="space-y-1.5 max-h-[220px] overflow-y-auto pr-1">
                     <div class="py-4 text-center text-slate-500 text-xs italic">
-                        Click "Draw Route" to view nearby landmarks and police posts.
+                        Click "Draw Route" to view places available along corridor.
                     </div>
                 </div>
             </div>
@@ -691,6 +731,10 @@
         let patrolAnimationId = null;
         let isPatrolling = false;
 
+        let currentRouteBufferKm = 1.5;
+        let activeRouteNearbyPlaces = [];
+        let currentRouteFilterTab = 'all';
+
         function getSelectedRouteWaypoints() {
             const selectedVal = document.getElementById('routeSelect')?.value || 'route_1';
             const foundRoute = typeof GZB_POLICE_ROUTES !== 'undefined' ? GZB_POLICE_ROUTES.find(r => r.id === selectedVal) : null;
@@ -698,27 +742,130 @@
             return typeof GZB_POLICE_ROUTES !== 'undefined' ? GZB_POLICE_ROUTES[0] : { name: "Route 1", waypoints: locations };
         }
 
-        function renderNearbyRouteLandmarks(locsToUse) {
+        function setRouteBufferRadius(radiusKm) {
+            currentRouteBufferKm = radiusKm;
+            document.querySelectorAll('.buffer-rad-btn').forEach(btn => {
+                const r = parseFloat(btn.getAttribute('data-radius'));
+                if (r === radiusKm) {
+                    btn.className = 'buffer-rad-btn px-1.5 py-0.5 rounded border text-[10px] bg-sky-500/20 text-sky-300 border-sky-500/40 font-bold';
+                } else {
+                    btn.className = 'buffer-rad-btn px-1.5 py-0.5 rounded border text-[10px] bg-slate-800 text-slate-300 border-slate-700';
+                }
+            });
+            onRouteSelectionChange();
+        }
+
+        function filterRoutePlacesTab(tab) {
+            currentRouteFilterTab = tab;
+            const btnAll = document.getElementById('tabRoutePlacesAll');
+            const btnWp = document.getElementById('tabRoutePlacesWp');
+            if (tab === 'all') {
+                if (btnAll) btnAll.className = 'px-2 py-0.5 rounded-lg bg-sky-500/20 text-sky-300 border border-sky-500/30 font-bold shrink-0';
+                if (btnWp) btnWp.className = 'px-2 py-0.5 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 shrink-0';
+            } else {
+                if (btnAll) btnAll.className = 'px-2 py-0.5 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 shrink-0';
+                if (btnWp) btnWp.className = 'px-2 py-0.5 rounded-lg bg-sky-500/20 text-sky-300 border border-sky-500/30 font-bold shrink-0';
+            }
+            renderRoutePlacesList();
+        }
+
+        function updateRouteWrittenStats(routeObj, nearbyPlaces) {
+            const titleEl = document.getElementById('routeCardTitle');
+            const subEl = document.getElementById('routeCardSub');
+            const gridEl = document.getElementById('routeCategoryBreakdownGrid');
+
+            if (titleEl) titleEl.textContent = routeObj.name;
+            if (subEl) subEl.textContent = `${routeObj.expectedKm || '39.0'} km Corridor • ${routeObj.waypoints ? routeObj.waypoints.length : 0} Checkposts • ${nearbyPlaces.length} Nearby Places (${currentRouteBufferKm}km buffer)`;
+
+            if (gridEl) {
+                gridEl.innerHTML = '';
+                const catCounts = {};
+                const catEmojis = {};
+                nearbyPlaces.forEach(p => {
+                    const cat = p.category || 'General';
+                    catCounts[cat] = (catCounts[cat] || 0) + 1;
+                    catEmojis[cat] = p.emoji || '📍';
+                });
+
+                const entries = Object.entries(catCounts);
+                if (entries.length === 0) {
+                    gridEl.innerHTML = `<div class="col-span-2 text-center text-slate-500 italic py-1">No places found within ${currentRouteBufferKm}km buffer</div>`;
+                } else {
+                    entries.forEach(([cat, count]) => {
+                        const emoji = catEmojis[cat] || '📍';
+                        const item = document.createElement('div');
+                        item.className = 'flex items-center justify-between p-1.5 bg-slate-900/90 border border-slate-800 rounded-lg hover:border-sky-500/40 transition-all cursor-pointer';
+                        item.onclick = () => {
+                            filterRoutePlacesByCategory(cat);
+                        };
+                        item.innerHTML = `
+                            <span class="truncate font-medium text-slate-300 flex items-center gap-1">
+                                <span>${emoji}</span> ${cat}
+                            </span>
+                            <span class="font-bold font-mono text-sky-400 bg-sky-500/10 px-1.5 py-0.2 rounded border border-sky-500/20 text-[9px]">${count}</span>
+                        `;
+                        gridEl.appendChild(item);
+                    });
+                }
+            }
+        }
+
+        function filterRoutePlacesByCategory(catName) {
+            const filtered = activeRouteNearbyPlaces.filter(p => p.category === catName);
+            showToast(`Filter: ${catName}`, `Showing ${filtered.length} ${catName} locations along route.`, "info");
+            renderRoutePlacesList(filtered);
+        }
+
+        function copyRouteWrittenReport() {
+            const routeObj = getSelectedRouteWaypoints();
+            if (typeof generateRouteStatsReport === 'function') {
+                const reportText = generateRouteStatsReport(routeObj, activeRouteNearbyPlaces, currentRouteBufferKm);
+                navigator.clipboard.writeText(reportText).then(() => {
+                    showToast("Report Copied", `Intelligence report for ${routeObj.name} copied to clipboard!`, "success");
+                }).catch(() => {
+                    showToast("Copy Failed", "Could not write report to clipboard.", "error");
+                });
+            }
+        }
+
+        function renderRoutePlacesList(customList = null) {
             const container = document.getElementById('routeNearbyLocationsList');
             const badge = document.getElementById('routeStopsCountBadge');
+            const routeObj = getSelectedRouteWaypoints();
+
+            let locsToUse = [];
+            if (customList) {
+                locsToUse = customList;
+            } else if (currentRouteFilterTab === 'waypoints') {
+                locsToUse = routeObj.waypoints || [];
+            } else {
+                locsToUse = activeRouteNearbyPlaces;
+            }
 
             if (!container) return;
-            badge.textContent = `${locsToUse.length} Landmarks`;
+            if (badge) badge.textContent = `${locsToUse.length} Places`;
+
             container.innerHTML = '';
+
+            if (locsToUse.length === 0) {
+                container.innerHTML = `<div class="py-4 text-center text-slate-500 text-xs italic">No places available in this selection.</div>`;
+                return;
+            }
 
             locsToUse.forEach((loc, idx) => {
                 const item = document.createElement('div');
-                item.className = 'flex items-center justify-between p-2.5 bg-slate-900 border border-slate-800 rounded-xl hover:border-sky-500/50 cursor-pointer transition-all group';
+                item.className = 'flex items-center justify-between p-2 bg-slate-900 border border-slate-800 rounded-xl hover:border-sky-500/50 cursor-pointer transition-all group';
                 item.onclick = () => {
                     map.flyTo([loc.lat, loc.lon], 15, { duration: 1.2 });
-                    showToast("Landmark Focus", `${loc.emoji} ${loc.name}`, "info");
+                    showToast("Place Focus", `${loc.emoji} ${loc.name}`, "info");
                 };
+                const distText = loc.distanceFromRouteKm !== undefined ? ` • 📍 ${loc.distanceFromRouteKm} km off corridor` : '';
                 item.innerHTML = `
                     <div class="flex items-center gap-2.5 overflow-hidden">
-                        <span class="text-lg shrink-0 group-hover:scale-110 transition-transform">${loc.emoji}</span>
+                        <span class="text-base shrink-0 group-hover:scale-110 transition-transform">${loc.emoji}</span>
                         <div class="truncate">
-                            <p class="text-xs font-semibold text-slate-200 truncate">${idx + 1}. ${loc.name}</p>
-                            <p class="text-[10px] text-sky-400 font-mono">${loc.category || loc.type || 'Point of Interest'} • ${loc.lat.toFixed(4)}, ${loc.lon.toFixed(4)}</p>
+                            <p class="text-[11px] font-semibold text-slate-200 truncate">${idx + 1}. ${loc.name}</p>
+                            <p class="text-[9px] text-sky-400 font-mono">${loc.category || loc.type || 'Point of Interest'}${distText}</p>
                         </div>
                     </div>
                 `;
@@ -727,11 +874,19 @@
         }
 
         function onRouteSelectionChange() {
+            const routeObj = getSelectedRouteWaypoints();
+            if (typeof getPlacesAlongRoute === 'function') {
+                activeRouteNearbyPlaces = getPlacesAlongRoute(routeObj.waypoints, locations, currentRouteBufferKm);
+            } else {
+                activeRouteNearbyPlaces = routeObj.waypoints || [];
+            }
+
+            updateRouteWrittenStats(routeObj, activeRouteNearbyPlaces);
+
             if (isRouteVisible) {
                 drawRouteLine();
             } else {
-                const routeObj = getSelectedRouteWaypoints();
-                renderNearbyRouteLandmarks(routeObj.waypoints);
+                renderRoutePlacesList();
             }
         }
 
@@ -752,9 +907,18 @@
                 return;
             }
 
-            // Draw ONLY the waypoints of this specific route on map
+            if (typeof getPlacesAlongRoute === 'function') {
+                activeRouteNearbyPlaces = getPlacesAlongRoute(waypoints, locations, currentRouteBufferKm);
+            } else {
+                activeRouteNearbyPlaces = waypoints;
+            }
+
+            updateRouteWrittenStats(routeObj, activeRouteNearbyPlaces);
+
+            // Draw waypoints + nearby places on map
             adminMarkerGroup.clearLayers();
-            waypoints.forEach(loc => {
+
+            waypoints.forEach((loc, idx) => {
                 const icon = L.divIcon({
                     html: `<div class="bounce-emoji-inner">${loc.emoji}</div>`,
                     className: 'custom-emoji-marker',
@@ -762,14 +926,25 @@
                     iconAnchor: [15, 15]
                 });
                 const m = L.marker([loc.lat, loc.lon], { icon }).addTo(adminMarkerGroup);
-                m.bindPopup(`<b>${loc.emoji} ${loc.name}</b><br><span class="text-xs text-sky-400 font-medium">${loc.category || loc.type || ''}</span>`);
+                m.bindPopup(`<b>${loc.emoji} Checkpoint ${idx + 1}: ${loc.name}</b><br><span class="text-xs text-sky-400 font-medium">${loc.type || 'Police Checkpost'}</span>`);
             });
 
-            renderNearbyRouteLandmarks(waypoints);
+            activeRouteNearbyPlaces.forEach(loc => {
+                const icon = L.divIcon({
+                    html: `<div class="bounce-emoji-inner text-xl">${loc.emoji}</div>`,
+                    className: 'custom-emoji-marker',
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 12]
+                });
+                const m = L.marker([loc.lat, loc.lon], { icon }).addTo(adminMarkerGroup);
+                m.bindPopup(`<b>${loc.emoji} ${loc.name}</b><br><span class="text-xs text-sky-400">${loc.category} • ${loc.distanceFromRouteKm} km off corridor</span>`);
+            });
+
+            renderRoutePlacesList();
 
             showToast("Calculating Route...", `Fetching Google Maps driving route for ${routeObj.name}...`, "info");
 
-            const routeData = await fetchRealRoadRoute(waypoints);
+            const routeData = typeof fetchRealRoadRoute !== 'undefined' ? await fetchRealRoadRoute(waypoints) : null;
             
             let latlngs;
             let totalKm;
@@ -808,11 +983,11 @@
             document.getElementById('routeDistanceBadge').textContent = `${totalKm} km`;
             document.getElementById('toggleRouteBtn').innerHTML = `<span>❌</span> Clear Route`;
             document.getElementById('toggleRouteBtn').className = "flex items-center justify-center gap-1.5 bg-rose-600 hover:bg-rose-500 text-white font-semibold py-2.5 px-3 text-xs rounded-xl shadow transition-all active:scale-95";
-            document.getElementById('routeStatusText').textContent = `🛣️ ${routeObj.name} (${totalKm} km${durationStr})`;
+            document.getElementById('routeStatusText').textContent = `🛣️ ${routeObj.name} (${totalKm} km${durationStr}) • ${activeRouteNearbyPlaces.length} Places`;
 
             isRouteVisible = true;
             map.fitBounds(routeMainPolyline.getBounds(), { padding: [50, 50] });
-            showToast("Real Road Route Loaded", `Mapped ${routeObj.name} (${totalKm} km) + ${nearbyMarkedLocations.length} nearby landmarks showcased!`, "success");
+            showToast("Real Road Route Loaded", `Mapped ${routeObj.name} (${totalKm} km) + ${activeRouteNearbyPlaces.length} places along corridor!`, "success");
         }
 
         function clearRouteLine() {
